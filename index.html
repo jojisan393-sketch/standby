@@ -114,7 +114,7 @@ async function typeWithConversion(reading, converted, typeDelay = 120, pauseMs =
     span.textContent = converted.slice(0, i) + reading.slice(i)
     await sleep(convertDelay)
   }
-
+　span.textContent = converted 
   span.classList.remove("converting")
   appendRaw("\n\n")
 }
