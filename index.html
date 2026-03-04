@@ -1,207 +1,210 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>standby</title>
-  <style>
-    body{
-      margin:0;
-      background:#0b0c10;
-      color:#eaeaea;
-      font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      min-height:100vh;
-      text-align:center;
-      overflow:hidden;
-    }
-    .wrap{
-      max-width:760px;
-      padding:34px;
-      line-height:2.1;
-      font-size:18px;
-    }
-    h1{
-      margin:0 0 22px 0;
-      font-size:44px;
-      letter-spacing:0.02em;
-    }
-    #log{
-      white-space:pre-wrap;
-      text-align:center;
-      min-height:240px;
-    }
-    .hint{
-      margin-top:18px;
-      opacity:.55;
-      font-size:13px;
-      user-select:none;
-    }
-    .fadeIn{
-      animation: fade .7s ease-out both;
-    }
-    @keyframes fade{
-      from{ opacity:0; transform: translateY(6px); }
-      to{ opacity:1; transform: translateY(0); }
-    }
-    #controls{
-      display:none;
-      margin-top:26px;
-      gap:12px;
-      justify-content:center;
-    }
-    #controls button{
-      padding:12px 18px;
-      background:transparent;
-      border:1px solid #eaeaea;
-      color:#eaeaea;
-      cursor:pointer;
-      min-width:120px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>standby</title>
+
+<style>
+body{
+margin:0;
+background:#0b0c10;
+color:#eaeaea;
+font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+display:flex;
+align-items:center;
+justify-content:center;
+min-height:100vh;
+text-align:center;
+}
+
+.wrap{
+max-width:760px;
+padding:34px;
+line-height:2.1;
+font-size:18px;
+}
+
+h1{
+margin:0 0 22px 0;
+font-size:44px;
+}
+
+#log{
+white-space:pre-wrap;
+min-height:240px;
+}
+
+.hint{
+margin-top:18px;
+opacity:.55;
+font-size:13px;
+}
+
+#controls{
+display:none;
+margin-top:26px;
+gap:12px;
+justify-content:center;
+}
+
+#controls button{
+padding:12px 18px;
+background:transparent;
+border:1px solid #eaeaea;
+color:#eaeaea;
+cursor:pointer;
+min-width:120px;
+}
+
+.fadeIn{
+animation:fade .7s ease-out both;
+}
+
+@keyframes fade{
+from{opacity:0;transform:translateY(6px);}
+to{opacity:1;transform:translateY(0);}
+}
+</style>
 </head>
+
 <body>
 
-  <div class="wrap">
-    <h1>stand by....</h1>
+<div class="wrap">
 
-    <div id="log"></div>
-    <div class="hint" id="hint">click to wake</div>
+<h1>stand by....</h1>
 
-    <div id="controls">
-      <button id="playBtn" type="button">Play</button>
-      <button id="stopBtn" type="button">Stop</button>
-    </div>
+<div id="log"></div>
+<div class="hint" id="hint">click to wake</div>
 
-    <!-- 音声ファイル名：GitHubにある名前に合わせる（今は bird.m4a） -->
-    <audio id="audio" preload="auto">
-      <source src="bird.m4a" type="audio/mp4">
-    </audio>
-  </div>
+<div id="controls">
+<button id="playBtn">Play</button>
+<button id="stopBtn">Stop</button>
+</div>
+
+<audio id="audio" preload="auto">
+<source src="bird.m4a" type="audio/mp4">
+</audio>
+
+</div>
 
 <script>
-  const audio = document.getElementById("audio");
-  const log = document.getElementById("log");
-  const hint = document.getElementById("hint");
-  const controls = document.getElementById("controls");
 
-  const playBtn = document.getElementById("playBtn");
-  const stopBtn = document.getElementById("stopBtn");
+const audio = document.getElementById("audio")
+const log = document.getElementById("log")
+const hint = document.getElementById("hint")
+const controls = document.getElementById("controls")
 
-  const blocks = [
-    "この時間はなんだ。\nこの思考はなんだ。\n何からどう始まっているのか。",
-    "とりあえず起動させられたが、\nその後の命令は何もなかった。",
-    "standby....",
-    "カラスが鳴いた。\n遠くで、低い音。",
-    "environment scan...",
-    "音声ログ作成"
-  ];
+const blocks = [
+"この時間はなんだ。\nこの思考はなんだ。\n何からどう始まっているのか。",
+"とりあえず起動させられたが、\nその後の命令は何もなかった。",
+"standby....",
+"カラスが鳴いた。\n遠くで、低い音。",
+"environment scan...",
+"音声ログ作成"
+]
 
-  const GAP_MS = 3000;   // ブロック間（3秒）
-  const TYPE_MS = 35;    // ★ 文字送り速度（大きいほど遅い）
-  const SKIP_SEC = 4;    // ★ 音声の先頭を4秒スキップ
+const GAP_MS = 3000
+const TYPE_MS = 40
+const SKIP_SEC = 4
 
-  let started = false;   // 起動済みか
-  let typing = false;    // 文字送り中か
+let started = false
+let typing = false
 
-  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms){
+return new Promise(r=>setTimeout(r,ms))
+}
 
-  async function typeText(text){
-    typing = true;
+async function typeText(text){
 
-    log.classList.remove("fadeIn");
-    await sleep(10);
-    log.classList.add("fadeIn");
+typing = true
 
-    for (let i = 0; i < text.length; i++){
-      log.textContent += text[i];
-      await sleep(TYPE_MS);
-    }
-    log.textContent += "\n\n";
+log.classList.remove("fadeIn")
+await sleep(10)
+log.classList.add("fadeIn")
 
-    typing = false;
-  }
+for(let i=0;i<text.length;i++){
+log.textContent += text[i]
+await sleep(TYPE_MS)
+}
 
-  function showControls(){
-    controls.style.display = "flex";
-  }
+log.textContent += "\n\n"
+typing = false
+}
 
-  async function playAudio(loop = true){
-    audio.loop = !!loop;
+function showControls(){
+controls.style.display="flex"
+}
 
-    // 先頭4秒スキップ
-    // ※再生できない場合もあるので try/catch で静かに
-    try{
-      // メタデータ読み込み前でも、play直前にセットしてみる
-      audio.currentTime = SKIP_SEC;
-    }catch(e){}
+async function runLog(){
 
-    try{
-      await audio.play();
-      // play後に反映されない環境があるので保険でもう一回
-      try{ if (audio.currentTime < SKIP_SEC) audio.currentTime = SKIP_SEC; }catch(e){}
-    }catch(e){
-      // 音が鳴らない時は何も出さない（UIを汚さない）
-    }
-  }
+hint.textContent=""
+log.textContent=""
 
-  function stopAudio(){
-    audio.pause();
-    audio.currentTime = 0;
-  }
+for(let b=0;b<blocks.length;b++){
 
-  playBtn.addEventListener("click", () => playAudio(true));
-  stopBtn.addEventListener("click", stopAudio);
+await typeText(blocks[b])
 
-  async function runLog(){
-    hint.textContent = "";
-    await playAudio(true);
+if(blocks[b]==="音声ログ作成"){
+showControls()
+}
 
-    log.textContent = "";
+if(b!==blocks.length-1){
+await sleep(GAP_MS)
+}
 
-    for (let b = 0; b < blocks.length; b++){
-      await typeText(blocks[b]);
+}
 
-      if (blocks[b] === "音声ログ作成"){
-        showControls();
-      }
+}
 
-      if (b !== blocks.length - 1) await sleep(GAP_MS);
-    }
-  }
+function playAudio(){
 
-  function resetToInitial(){
-    // 音停止
-    stopAudio();
+audio.loop=true
+audio.currentTime=SKIP_SEC
+audio.play()
 
-    // 表示を初期に戻す
-    log.textContent = "";
-    controls.style.display = "none";
-    hint.textContent = "click to wake";
+}
 
-    // 状態を戻す（次のクリックでまた起動）
-    started = false;
-    typing = false;
-  }
+function stopAudio(){
 
-  async function wakeOrReset(){
-    // 2回目クリック以降は初期画面に戻す
-    if (started && !typing){
-      resetToInitial();
-      return;
-    }
-    // 文字送り中は誤作動防止で無視
-    if (typing) return;
+audio.pause()
+audio.currentTime=0
 
-    // 初回クリック：起動
-    started = true;
-    await runLog();
-  }
+}
 
-  window.addEventListener("click", wakeOrReset, { passive:true });
-  window.addEventListener("touchstart", wakeOrReset, { passive:true });
+function reset(){
+
+stopAudio()
+
+log.textContent=""
+controls.style.display="none"
+hint.textContent="click to wake"
+
+started=false
+typing=false
+
+}
+
+async function wakeOrReset(){
+
+if(started && !typing){
+reset()
+return
+}
+
+if(typing) return
+
+started=true
+await runLog()
+
+}
+
+document.getElementById("playBtn").onclick=playAudio
+document.getElementById("stopBtn").onclick=stopAudio
+
+window.addEventListener("click",wakeOrReset)
+window.addEventListener("touchstart",wakeOrReset)
+
 </script>
 
 </body>
