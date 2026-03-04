@@ -1,96 +1,198 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>standby</title>
-
-<style>
-body{
-margin:0;
-background:#0b0c10;
-color:#eaeaea;
-font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
-display:flex;
-align-items:center;
-justify-content:center;
-height:100vh;
-text-align:center;
-}
-
-.wrap{
-max-width:700px;
-padding:30px;
-line-height:2;
-font-size:18px;
-}
-
-button{
-margin:10px;
-padding:12px 20px;
-background:transparent;
-border:1px solid #eaeaea;
-color:#eaeaea;
-cursor:pointer;
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>standby</title>
+  <style>
+    body{
+      margin:0;
+      background:#0b0c10;
+      color:#eaeaea;
+      font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      text-align:center;
+    }
+    .wrap{
+      max-width:720px;
+      padding:32px;
+      line-height:2;
+      font-size:18px;
+    }
+    h1{
+      margin:0 0 18px 0;
+      font-size:40px;
+      letter-spacing:0.02em;
+    }
+    .hint{
+      opacity:.8;
+      margin:18px 0 0 0;
+      font-size:14px;
+    }
+    .btnRow{
+      margin-top:18px;
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
+    button{
+      margin:0;
+      padding:12px 18px;
+      background:transparent;
+      border:1px solid #eaeaea;
+      color:#eaeaea;
+      cursor:pointer;
+      min-width:120px;
+    }
+    button:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+    }
+    #story{
+      margin-top:18px;
+      white-space:pre-wrap;
+    }
+    .fadeIn{
+      animation: fade .6s ease-out both;
+    }
+    @keyframes fade{
+      from{ opacity:0; transform: translateY(4px); }
+      to{ opacity:1; transform: translateY(0); }
+    }
+  </style>
 </head>
-
 <body>
 
-<div class="wrap">
+  <div class="wrap">
+    <h1>stand by....</h1>
 
-<h1>stand by....</h1>
+    <div class="btnRow">
+      <button id="startBtn">Start</button>
+      <button id="playBtn" disabled>Play</button>
+      <button id="repeatBtn" disabled>Repeat</button>
+      <button id="stopBtn" disabled>Stop</button>
+    </div>
 
-<p>
-この時間はなんだ。<br>
-この思考はなんだ。<br>
-何からどう始まっているのか。
-</p>
+    <div class="hint" id="hint">Start を押すと、音が鳴って文章が出ます。</div>
+    <div id="story"></div>
 
-<br>
-
-<p>
-とりあえず起動させられたが、<br>
-その後の命令は何もなかった。
-</p>
-
-<br>
-
-<p>standby....</p>
-
-<br>
-
-<p>
-カラスが鳴いた。<br>
-遠くで、低い音。
-</p>
-
-<button id="playBtn">Play</button>
-<button id="repeatBtn">Repeat</button>
-
-<audio id="crow">
-<source src="crow.m4a" type="audio/mp4">
-</audio>
-
-</div>
+    <!-- 音声：リポジトリに bird.m4a がある前提 -->
+    <audio id="audio" preload="auto">
+      <source src="bird.m4a" type="audio/mp4">
+    </audio>
+  </div>
 
 <script>
+  const lines = [
+    "この時間はなんだ。",
+    "この思考はなんだ。",
+    "何からどう始まっているのか。",
+    "",
+    "とりあえず起動させられたが、",
+    "その後の命令は何もなかった。",
+    "",
+    "standby....",
+    "",
+    "カラスが鳴いた。",
+    "遠くで、低い音。"
+  ];
 
-const audio = document.getElementById("crow")
+  const audio = document.getElementById("audio");
+  const story = document.getElementById("story");
+  const hint  = document.getElementById("hint");
 
-document.getElementById("playBtn").onclick = () => {
-audio.loop = false
-audio.currentTime = 0
-audio.play()
-}
+  const startBtn  = document.getElementById("startBtn");
+  const playBtn   = document.getElementById("playBtn");
+  const repeatBtn = document.getElementById("repeatBtn");
+  const stopBtn   = document.getElementById("stopBtn");
 
-document.getElementById("repeatBtn").onclick = () => {
-audio.loop = true
-audio.currentTime = 0
-audio.play()
-}
+  let started = false;
+  let timer = null;
+  let i = 0;
 
+  function enableControls(){
+    playBtn.disabled = false;
+    repeatBtn.disabled = false;
+    stopBtn.disabled = false;
+  }
+
+  function resetStory(){
+    if (timer) clearInterval(timer);
+    timer = null;
+    i = 0;
+    story.textContent = "";
+  }
+
+  function revealLines(){
+    resetStory();
+    story.classList.remove("fadeIn");
+    // 一瞬待ってフェードを効かせる
+    setTimeout(() => story.classList.add("fadeIn"), 10);
+
+    timer = setInterval(() => {
+      if (i >= lines.length){
+        clearInterval(timer);
+        timer = null;
+        return;
+      }
+      story.textContent += (lines[i] + "\n");
+      i++;
+    }, 650); // 表示速度（ここで調整）
+  }
+
+  async function startExperience(loop){
+    audio.loop = !!loop;
+    audio.currentTime = 0;
+
+    // Safariの自動再生制限対策：ユーザー操作（ボタン）内で play() する
+    await audio.play();
+
+    revealLines();
+    enableControls();
+    hint.textContent = loop ? "Repeat中（ループ）" : "再生中";
+  }
+
+  startBtn.addEventListener("click", async () => {
+    if (started) return;
+    started = true;
+    startBtn.disabled = true;
+    hint.textContent = "起動中...";
+    try{
+      await startExperience(false);
+    }catch(e){
+      // 音声の読み込みや再生が失敗したとき
+      hint.textContent = "音が再生できない。bird.m4a があるか確認してね。";
+      startBtn.disabled = false;
+      started = false;
+    }
+  });
+
+  playBtn.addEventListener("click", async () => {
+    try{
+      await startExperience(false);
+    }catch(e){
+      hint.textContent = "再生できない。音声ファイル名を確認してね。";
+    }
+  });
+
+  repeatBtn.addEventListener("click", async () => {
+    try{
+      await startExperience(true);
+    }catch(e){
+      hint.textContent = "再生できない。音声ファイル名を確認してね。";
+    }
+  });
+
+  stopBtn.addEventListener("click", () => {
+    audio.pause();
+    audio.currentTime = 0;
+    hint.textContent = "停止";
+    resetStory();
+  });
 </script>
 
 </body>
