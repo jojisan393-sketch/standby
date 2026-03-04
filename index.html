@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>standby</title>
+
+<style>
+body{
+margin:0;
+background:#0b0c10;
+color:#eaeaea;
+font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+display:flex;
+align-items:center;
+justify-content:center;
+height:100vh;
+text-align:center;
+}
+
+.wrap{
+max-width:700px;
+padding:30px;
+line-height:2;
+font-size:18px;
+}
+
+button{
+margin:10px;
+padding:12px 20px;
+background:transparent;
+border:1px solid #eaeaea;
+color:#eaeaea;
+cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+<h1>stand by....</h1>
+
+<p>
+この時間はなんだ。<br>
+この思考はなんだ。<br>
+何からどう始まっているのか。
+</p>
+
+<br>
+
+<p>
+とりあえず起動させられたが、<br>
+その後の命令は何もなかった。
+</p>
+
+<br>
+
+<p>standby....</p>
+
+<br>
+
+<p>
+カラスが鳴いた。<br>
+遠くで、低い音。
+</p>
+
+<button id="playBtn">Play</button>
+<button id="repeatBtn">Repeat</button>
+
+<audio id="crow">
+<source src="crow.m4a" type="audio/mp4">
+</audio>
+
+</div>
+
+<script>
+
+const audio = document.getElementById("crow")
+
+document.getElementById("playBtn").onclick = () => {
+audio.loop = false
+audio.currentTime = 0
+audio.play()
+}
+
+document.getElementById("repeatBtn").onclick = () => {
+audio.loop = true
+audio.currentTime = 0
+audio.play()
+}
+
+</script>
+
+</body>
+</html>
