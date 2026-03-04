@@ -15,53 +15,50 @@
       justify-content:center;
       min-height:100vh;
       text-align:center;
+      overflow:hidden;
     }
     .wrap{
-      max-width:720px;
-      padding:32px;
-      line-height:2;
+      max-width:760px;
+      padding:34px;
+      line-height:2.1;
       font-size:18px;
     }
     h1{
-      margin:0 0 18px 0;
-      font-size:40px;
+      margin:0 0 22px 0;
+      font-size:44px;
       letter-spacing:0.02em;
     }
+    #log{
+      white-space:pre-wrap;
+      text-align:center;
+      min-height: 240px;
+    }
     .hint{
-      opacity:.8;
-      margin:18px 0 0 0;
-      font-size:14px;
-    }
-    .btnRow{
       margin-top:18px;
-      display:flex;
-      gap:10px;
-      justify-content:center;
-      flex-wrap:wrap;
+      opacity:.55;
+      font-size:13px;
+      user-select:none;
     }
-    button{
-      margin:0;
+    .fadeIn{
+      animation: fade .7s ease-out both;
+    }
+    @keyframes fade{
+      from{ opacity:0; transform: translateY(6px); }
+      to{ opacity:1; transform: translateY(0); }
+    }
+    #controls{
+      display:none;
+      margin-top:26px;
+      gap:12px;
+      justify-content:center;
+    }
+    #controls button{
       padding:12px 18px;
       background:transparent;
       border:1px solid #eaeaea;
       color:#eaeaea;
       cursor:pointer;
       min-width:120px;
-    }
-    button:disabled{
-      opacity:.45;
-      cursor:not-allowed;
-    }
-    #story{
-      margin-top:18px;
-      white-space:pre-wrap;
-    }
-    .fadeIn{
-      animation: fade .6s ease-out both;
-    }
-    @keyframes fade{
-      from{ opacity:0; transform: translateY(4px); }
-      to{ opacity:1; transform: translateY(0); }
     }
   </style>
 </head>
@@ -70,129 +67,110 @@
   <div class="wrap">
     <h1>stand by....</h1>
 
-    <div class="btnRow">
-      <button id="startBtn">Start</button>
-      <button id="playBtn" disabled>Play</button>
-      <button id="repeatBtn" disabled>Repeat</button>
-      <button id="stopBtn" disabled>Stop</button>
+    <div id="log"></div>
+    <div class="hint" id="hint">click to wake</div>
+
+    <div id="controls">
+      <button id="playBtn" type="button">Play</button>
+      <button id="stopBtn" type="button">Stop</button>
     </div>
 
-    <div class="hint" id="hint">Start を押すと、音が鳴って文章が出ます。</div>
-    <div id="story"></div>
-
-    <!-- 音声：リポジトリに bird.m4a がある前提 -->
+    <!-- 音声ファイル名：GitHubにある名前に合わせる（今は bird.m4a） -->
     <audio id="audio" preload="auto">
       <source src="bird.m4a" type="audio/mp4">
     </audio>
   </div>
 
 <script>
-  const lines = [
-    "この時間はなんだ。",
-    "この思考はなんだ。",
-    "何からどう始まっているのか。",
-    "",
-    "とりあえず起動させられたが、",
-    "その後の命令は何もなかった。",
-    "",
+  const audio = document.getElementById("audio");
+  const log = document.getElementById("log");
+  const hint = document.getElementById("hint");
+  const controls = document.getElementById("controls");
+
+  const playBtn = document.getElementById("playBtn");
+  const stopBtn = document.getElementById("stopBtn");
+
+  // ブロックごとに表示。ブロック間は 3秒
+  const blocks = [
+    "この時間はなんだ。\nこの思考はなんだ。\n何からどう始まっているのか。",
+    "とりあえず起動させられたが、\nその後の命令は何もなかった。",
     "standby....",
-    "",
-    "カラスが鳴いた。",
-    "遠くで、低い音。"
+    "カラスが鳴いた。\n遠くで、低い音。",
+    "environment scan...",
+    "音声ログ作成"
   ];
 
-  const audio = document.getElementById("audio");
-  const story = document.getElementById("story");
-  const hint  = document.getElementById("hint");
-
-  const startBtn  = document.getElementById("startBtn");
-  const playBtn   = document.getElementById("playBtn");
-  const repeatBtn = document.getElementById("repeatBtn");
-  const stopBtn   = document.getElementById("stopBtn");
+  const GAP_MS = 3000;   // 文章と文章の間（3秒）
+  const TYPE_MS = 18;    // 文字送り速度（ログっぽさ）
 
   let started = false;
+  let typing = false;
   let timer = null;
-  let i = 0;
 
-  function enableControls(){
-    playBtn.disabled = false;
-    repeatBtn.disabled = false;
-    stopBtn.disabled = false;
+  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+  async function typeText(text){
+    typing = true;
+
+    log.classList.remove("fadeIn");
+    await sleep(10);
+    log.classList.add("fadeIn");
+
+    for (let i = 0; i < text.length; i++){
+      log.textContent += text[i];
+      await sleep(TYPE_MS);
+    }
+    log.textContent += "\n\n";
+
+    typing = false;
   }
 
-  function resetStory(){
-    if (timer) clearInterval(timer);
-    timer = null;
-    i = 0;
-    story.textContent = "";
+  function showControls(){
+    controls.style.display = "flex";
   }
 
-  function revealLines(){
-    resetStory();
-    story.classList.remove("fadeIn");
-    // 一瞬待ってフェードを効かせる
-    setTimeout(() => story.classList.add("fadeIn"), 10);
-
-    timer = setInterval(() => {
-      if (i >= lines.length){
-        clearInterval(timer);
-        timer = null;
-        return;
-      }
-      story.textContent += (lines[i] + "\n");
-      i++;
-    }, 650); // 表示速度（ここで調整）
-  }
-
-  async function startExperience(loop){
+  function playAudio(loop = true){
     audio.loop = !!loop;
-    audio.currentTime = 0;
-
-    // Safariの自動再生制限対策：ユーザー操作（ボタン）内で play() する
-    await audio.play();
-
-    revealLines();
-    enableControls();
-    hint.textContent = loop ? "Repeat中（ループ）" : "再生中";
+    audio.play().catch(() => {});
   }
 
-  startBtn.addEventListener("click", async () => {
-    if (started) return;
-    started = true;
-    startBtn.disabled = true;
-    hint.textContent = "起動中...";
-    try{
-      await startExperience(false);
-    }catch(e){
-      // 音声の読み込みや再生が失敗したとき
-      hint.textContent = "音が再生できない。bird.m4a があるか確認してね。";
-      startBtn.disabled = false;
-      started = false;
-    }
-  });
-
-  playBtn.addEventListener("click", async () => {
-    try{
-      await startExperience(false);
-    }catch(e){
-      hint.textContent = "再生できない。音声ファイル名を確認してね。";
-    }
-  });
-
-  repeatBtn.addEventListener("click", async () => {
-    try{
-      await startExperience(true);
-    }catch(e){
-      hint.textContent = "再生できない。音声ファイル名を確認してね。";
-    }
-  });
-
-  stopBtn.addEventListener("click", () => {
+  function stopAudio(){
     audio.pause();
     audio.currentTime = 0;
-    hint.textContent = "停止";
-    resetStory();
-  });
+  }
+
+  playBtn.addEventListener("click", () => playAudio(true));
+  stopBtn.addEventListener("click", stopAudio);
+
+  async function runLog(){
+    hint.textContent = "";
+
+    // クリック内で再生（Safari制限対策）
+    playAudio(true);
+
+    log.textContent = "";
+
+    for (let b = 0; b < blocks.length; b++){
+      await typeText(blocks[b]);
+
+      // 「音声ログ作成」が出たらボタン表示
+      if (blocks[b] === "音声ログ作成"){
+        showControls();
+      }
+
+      if (b !== blocks.length - 1) await sleep(GAP_MS);
+    }
+  }
+
+  // 画面どこでもクリック/タップで起動（ボタン無し）
+  async function wake(){
+    if (started || typing) return;
+    started = true;
+    await runLog();
+  }
+
+  window.addEventListener("click", wake, { passive:true });
+  window.addEventListener("touchstart", wake, { passive:true });
 </script>
 
 </body>
