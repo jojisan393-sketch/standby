@@ -31,7 +31,7 @@
     #log{
       white-space:pre-wrap;
       text-align:center;
-      min-height: 240px;
+      min-height:240px;
     }
     .hint{
       margin-top:18px;
@@ -90,7 +90,6 @@
   const playBtn = document.getElementById("playBtn");
   const stopBtn = document.getElementById("stopBtn");
 
-  // ブロックごとに表示。ブロック間は 3秒
   const blocks = [
     "この時間はなんだ。\nこの思考はなんだ。\n何からどう始まっているのか。",
     "とりあえず起動させられたが、\nその後の命令は何もなかった。",
@@ -100,12 +99,12 @@
     "音声ログ作成"
   ];
 
-  const GAP_MS = 3000;   // 文章と文章の間（3秒）
-  const TYPE_MS = 18;    // 文字送り速度（ログっぽさ）
+  const GAP_MS = 3000;   // ブロック間（3秒）
+  const TYPE_MS = 35;    // ★ 文字送り速度（大きいほど遅い）
+  const SKIP_SEC = 4;    // ★ 音声の先頭を4秒スキップ
 
-  let started = false;
-  let typing = false;
-  let timer = null;
+  let started = false;   // 起動済みか
+  let typing = false;    // 文字送り中か
 
   function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
@@ -129,9 +128,23 @@
     controls.style.display = "flex";
   }
 
-  function playAudio(loop = true){
+  async function playAudio(loop = true){
     audio.loop = !!loop;
-    audio.play().catch(() => {});
+
+    // 先頭4秒スキップ
+    // ※再生できない場合もあるので try/catch で静かに
+    try{
+      // メタデータ読み込み前でも、play直前にセットしてみる
+      audio.currentTime = SKIP_SEC;
+    }catch(e){}
+
+    try{
+      await audio.play();
+      // play後に反映されない環境があるので保険でもう一回
+      try{ if (audio.currentTime < SKIP_SEC) audio.currentTime = SKIP_SEC; }catch(e){}
+    }catch(e){
+      // 音が鳴らない時は何も出さない（UIを汚さない）
+    }
   }
 
   function stopAudio(){
@@ -144,16 +157,13 @@
 
   async function runLog(){
     hint.textContent = "";
-
-    // クリック内で再生（Safari制限対策）
-    playAudio(true);
+    await playAudio(true);
 
     log.textContent = "";
 
     for (let b = 0; b < blocks.length; b++){
       await typeText(blocks[b]);
 
-      // 「音声ログ作成」が出たらボタン表示
       if (blocks[b] === "音声ログ作成"){
         showControls();
       }
@@ -162,15 +172,36 @@
     }
   }
 
-  // 画面どこでもクリック/タップで起動（ボタン無し）
-  async function wake(){
-    if (started || typing) return;
+  function resetToInitial(){
+    // 音停止
+    stopAudio();
+
+    // 表示を初期に戻す
+    log.textContent = "";
+    controls.style.display = "none";
+    hint.textContent = "click to wake";
+
+    // 状態を戻す（次のクリックでまた起動）
+    started = false;
+    typing = false;
+  }
+
+  async function wakeOrReset(){
+    // 2回目クリック以降は初期画面に戻す
+    if (started && !typing){
+      resetToInitial();
+      return;
+    }
+    // 文字送り中は誤作動防止で無視
+    if (typing) return;
+
+    // 初回クリック：起動
     started = true;
     await runLog();
   }
 
-  window.addEventListener("click", wake, { passive:true });
-  window.addEventListener("touchstart", wake, { passive:true });
+  window.addEventListener("click", wakeOrReset, { passive:true });
+  window.addEventListener("touchstart", wakeOrReset, { passive:true });
 </script>
 
 </body>
